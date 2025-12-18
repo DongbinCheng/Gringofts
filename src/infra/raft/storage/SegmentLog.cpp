@@ -152,7 +152,9 @@ void SegmentLog::recoverSegments() {
     assert(prevSegPtr || mFirstIndex >= mActiveSegment->getFirstIndex());
     assert(!prevSegPtr || mActiveSegment->getFirstIndex() == prevSegPtr->getLastIndex() + 1);
 
-    mActiveSegment->recoverActiveOrClosedSegment();
+    /// recover active segment
+    SPDLOG_INFO("load active segment");
+    mActiveSegment->recoverActiveOrClosedSegment(mSegmentDataSizeLimit, mSegmentMetaSizeLimit);
 
     /// ATTENTION: lastIndex of active segment
     ///            is recovered by Segment::recoverActiveOrClosedSegment()

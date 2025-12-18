@@ -20,6 +20,7 @@ set(UNIT_TEST_SRC
         infra/mpscqueue/MpscDoubleBufferQueueTest.cpp
         infra/raft/monitor/RaftMonitorAdaptorTest.cpp
         infra/raft/storage/LogTest.cpp
+        infra/raft/storage/SegmentTest.cpp
         infra/raft/v2/ClusterTestUtil.cpp
         infra/raft/v2/FixedMembershipTest.cpp
         infra/raft/v2/RaftCoreTest.cpp

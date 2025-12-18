@@ -18,6 +18,7 @@ limitations under the License.
 #include <vector>
 
 #include <spdlog/spdlog.h>
+#include <absl/strings/str_cat.h>
 
 #include "../../util/FileUtil.h"
 #include "../../util/TimeUtil.h"
@@ -106,7 +107,7 @@ void Segment::createActiveSegment() {
   SPDLOG_INFO("Create an activeSegment, timeCost={}ms", (end - beg) / 1000000.0);
 }
 
-void Segment::recoverActiveOrClosedSegment() {
+void Segment::recoverActiveOrClosedSegment(uint64_t maxDataSize, uint64_t maxMetaSize) {
   auto beg = TimeUtil::currentTimeInNanos();
 
   /// open data file
@@ -114,27 +115,48 @@ void Segment::recoverActiveOrClosedSegment() {
                                        : dataFileNameForClosedSegment(mFirstIndex, mLastIndex));
 
   mDataFd = ::open(dataPath.c_str(), O_RDWR);
-  assert(mDataFd != -1);
+  if (mDataFd == -1) {
+    SPDLOG_ERROR("open file ERROR {}, it will coredump", dataPath);
+    throw std::runtime_error(absl::StrCat("open file ERROR ", dataPath));
+  }
 
   /// get file size, mmap
   mDataSizeLimit = FileUtil::getFileSize(mDataFd);
+  if (mDataSizeLimit < maxDataSize) {
+    SPDLOG_WARN("data file size is {}MB, expand it to {}MB",
+        mDataSizeLimit / 1024.0 / 1024.0, maxDataSize / 1024.0 / 1024.0);
+    FileUtil::setFileSize(mDataFd, maxDataSize);
+    mDataSizeLimit = maxDataSize;
+  }
   mDataMemPtr = ::mmap(nullptr, mDataSizeLimit, PROT_WRITE | PROT_READ, MAP_SHARED, mDataFd, 0);
-  assert(mDataMemPtr != MAP_FAILED);
+  if (mDataMemPtr == MAP_FAILED) {
+    SPDLOG_ERROR("MMAP {} ERROR: {}", dataPath, std::strerror(errno));
+    throw std::runtime_error(absl::StrCat("MMAP ",  dataPath, " ERROR: ", std::strerror(errno)));
+  }
 
   /// open meta file
   auto metaPath = mLogDir + (mIsActive ? metaFileNameForActiveSegment(mFirstIndex)
                                        : metaFileNameForClosedSegment(mFirstIndex, mLastIndex));
 
   mMetaFd = ::open(metaPath.c_str(), O_RDWR);
-  assert(mMetaFd != -1);
+  if (mMetaFd == -1) {
+    SPDLOG_ERROR("open file ERROR {}, it will coredump", metaPath);
+    throw std::runtime_error(absl::StrCat("open file ERROR ", metaPath));
+  }
 
   /// get file size, mmap
   mMetaSizeLimit = FileUtil::getFileSize(mMetaFd);
+  if (mMetaSizeLimit < maxMetaSize) {
+    SPDLOG_WARN("meta file size is {}MB, expand it to {}MB",
+        mMetaSizeLimit / 1024.0 / 1024.0, maxMetaSize / 1024.0 / 1024.0);
+    FileUtil::setFileSize(mMetaFd, maxMetaSize);
+    mMetaSizeLimit = maxMetaSize;
+  }
   mMetaMemPtr = ::mmap(nullptr, mMetaSizeLimit, PROT_WRITE | PROT_READ, MAP_SHARED, mMetaFd, 0);
   if (mMetaMemPtr == MAP_FAILED) {
-    SPDLOG_ERROR("MMAP ERROR {}", std::strerror(errno));
+    SPDLOG_ERROR("MMAP {} ERROR: {}", metaPath, std::strerror(errno));
+    throw std::runtime_error(absl::StrCat("MMAP ", metaPath, " ERROR: ", std::strerror(errno)));
   }
-  assert(mMetaMemPtr != MAP_FAILED);
 
   /// recover meta file
   uint64_t maxPos = mMetaSizeLimit / sizeof(LogMeta);
@@ -165,9 +187,11 @@ void Segment::recoverActiveOrClosedSegment() {
 
   auto end = TimeUtil::currentTimeInNanos();
   SPDLOG_INFO("Recover segment, maxDataSize={}MB, maxMetaSize={}MB, "
-              "firstIndex={}, lastIndex={}, timeCost={}ms",
+              "firstIndex={}, lastIndex={}, "
+              "dataOffset={}, metaOffset={}, timeCost={}ms",
               mDataSizeLimit / 1024.0 / 1024.0, mMetaSizeLimit / 1024.0 / 1024.0,
-              mFirstIndex, mLastIndex, (end - beg) / 1000000.0);
+              mFirstIndex, mLastIndex,
+              mDataOffset / 1024.0 / 1024.0, mMetaOffset / 1024.0 / 1024.0, (end - beg) / 1000000.0);
 }
 
 void Segment::closeActiveSegment() {

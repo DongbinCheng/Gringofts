@@ -208,7 +208,11 @@ void FileUtil::setFileSize(int fd, uint64_t fileSize) {
    *    will be written at the last byte of the file.
    */
   int ret = ::write(fd, "", 1);
-  assert(ret != -1);
+  assert(ret == 1);
+
+  /// check file size
+  auto currentFileSize = getFileSize(fd);
+  assert(currentFileSize == fileSize);
 }
 
 /**
