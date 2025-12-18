@@ -109,7 +109,7 @@ class Segment final {
 
   /// create or recover segment
   void createActiveSegment();
-  void recoverActiveOrClosedSegment();
+  void recoverActiveOrClosedSegment(uint64_t maxDataSize = 0, uint64_t maxMetaSize = 0);
 
   /// convert active segment to closed segment
   /// just rename() from segment_in_progress_first to segment_first_last
