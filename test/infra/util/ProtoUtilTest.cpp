@@ -21,7 +21,7 @@ namespace gringofts::test {
 
 /// A byte sequence that is a valid protobuf `string` payload as far as the wire
 /// format is concerned, but is NOT well-formed UTF-8 (0xFF is never legal).
-/// This mirrors the "line online" scenario where the json trackingContext ends
+/// This mirrors the "live online" scenario where the json trackingContext ends
 /// up carrying raw/binary bytes.
 static std::string invalidUtf8() {
   return std::string("json:\xff\xfe{corrupt}", 15);
