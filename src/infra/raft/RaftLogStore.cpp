@@ -17,6 +17,7 @@ limitations under the License.
 #include <unistd.h>
 
 #include "../es/store/CommandEventEncodeWrapper.h"
+#include "../util/ProtoUtil.h"
 
 namespace {
 using ::gringofts::es::CommandEntry;
@@ -108,7 +109,14 @@ void RaftLogStore::dequeue() {
     CommandEventEncodeWrapper::encodeEvent(*event, payload.add_events());
   }
 
-  payload.SerializeToString(clientRequest.mEntry.mutable_payload());
+  if (!ProtoUtil::checkedSerializeToString(payload, clientRequest.mEntry.mutable_payload())) {
+    /// Keep the historical behaviour of proceeding with whatever was produced, but
+    /// now the evidence (type, offending field, hex dump and stack trace) has been
+    /// logged above so the next online reproduction can be diagnosed directly.
+    SPDLOG_ERROR("Failed to safely serialize RaftPayload for command Id {} with {} events; "
+                 "see the logged evidence above (utf8/hex/stacktrace)",
+                 command->getId(), events.size());
+  }
 
   uint64_t ts2InNano = TimeUtil::currentTimeInNanos();
 

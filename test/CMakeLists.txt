@@ -29,6 +29,7 @@ set(UNIT_TEST_SRC
         infra/util/CryptoUtilTest.cpp
         infra/util/FileUtilTest.cpp
         infra/util/IdGeneratorTest.cpp
+        infra/util/ProtoUtilTest.cpp
         infra/util/RandomUtilTest.cpp
         infra/util/SignalTest.cpp
         infra/util/TimeUtilTest.cpp
